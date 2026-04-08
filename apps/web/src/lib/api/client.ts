@@ -23,19 +23,99 @@ async function handleResponse<T>(res: Response): Promise<T> {
 
 const isProd = import.meta.env.PROD;
 
-async function mockNetwork<T>(path: string, method: string): Promise<T> {
-  return new Promise((resolve) => {
+// In-memory mock store
+const mockDB = {
+  expenses: [] as any[],
+  cards: [
+    { id: "card_1", name: "Corporate Card", last4: "4321", active: true, balance: 1200 },
+  ] as any[],
+  savings: [] as any[],
+  cryptoPrices: [
+    { id: "btc", symbol: "BTC", name: "Bitcoin", price: 65000, change24h: 2.5 },
+    { id: "eth", symbol: "ETH", name: "Ethereum", price: 3400, change24h: -1.2 },
+  ] as any[],
+  cryptoHoldings: [] as any[],
+  riskEvents: [] as any[],
+};
+
+async function mockNetwork<T>(path: string, method: string, body?: any): Promise<T> {
+  return new Promise((resolve, reject) => {
     setTimeout(() => {
-      if (path.includes("/auth/login") || path.includes("/auth/signup")) {
-        resolve({ user: { id: "demo-user" } } as unknown as T);
-        return;
+      try {
+        if (path.includes("/auth/login") || path.includes("/auth/signup")) {
+          return resolve({ user: { id: "demo-user" } } as unknown as T);
+        }
+        
+        if (path.includes("/business/expenses")) {
+          if (method === "GET") return resolve(mockDB.expenses as unknown as T);
+          if (method === "POST") {
+            const newItem = { id: Math.random().toString(), ...body };
+            mockDB.expenses.push(newItem);
+            return resolve(newItem as unknown as T);
+          }
+        }
+
+        if (path.includes("/business/cards")) {
+          if (method === "GET") return resolve(mockDB.cards as unknown as T);
+          if (method === "POST") {
+            const newItem = { id: Math.random().toString(), active: true, balance: 0, ...body };
+            mockDB.cards.push(newItem);
+            return resolve(newItem as unknown as T);
+          }
+          if (method === "PATCH") {
+             const idPart = path.split("/")[3];
+             const card = mockDB.cards.find(c => c.id === idPart);
+             if (card && path.includes("toggle")) card.active = !card.active;
+             return resolve(card as unknown as T);
+          }
+        }
+
+        if (path.includes("/savings")) {
+          if (method === "GET") return resolve(mockDB.savings as unknown as T);
+          if (method === "POST") {
+             if (path.includes("/deposit")) {
+               const idPart = path.split("/")[2];
+               const goal = mockDB.savings.find(s => s.id === idPart);
+               if (goal) goal.currentAmount = (goal.currentAmount || 0) + (body.amount || 0);
+               return resolve(goal as unknown as T);
+             }
+             const newItem = { id: Math.random().toString(), currentAmount: 0, ...body };
+             mockDB.savings.push(newItem);
+             return resolve(newItem as unknown as T);
+          }
+          if (method === "DELETE") {
+             const idPart = path.split("/")[2];
+             mockDB.savings = mockDB.savings.filter(s => s.id !== idPart);
+             return resolve({ success: true } as unknown as T);
+          }
+        }
+
+        if (path.includes("/crypto/prices")) return resolve(mockDB.cryptoPrices as unknown as T);
+        if (path.includes("/crypto/holdings")) return resolve(mockDB.cryptoHoldings as unknown as T);
+        if (path.includes("/crypto/buy") || path.includes("/crypto/sell")) {
+          return resolve({ success: true } as unknown as T);
+        }
+
+        if (path.includes("/risk-events")) {
+          if (method === "GET") return resolve(mockDB.riskEvents as unknown as T);
+          if (method === "POST") {
+             const newItem = { id: Math.random().toString(), ...body };
+             mockDB.riskEvents.push(newItem);
+             return resolve(newItem as unknown as T);
+          }
+        }
+
+        if (path.includes("/transfers")) {
+          if (method === "POST") return resolve({ success: true } as unknown as T);
+        }
+
+        // Fallback
+        if (method === "GET") return resolve([] as unknown as T);
+        resolve({ id: Math.random().toString(), ...body, success: true } as unknown as T);
+      } catch (err) {
+        reject(err);
       }
-      if (method === "GET") {
-        resolve([] as unknown as T);
-        return;
-      }
-      resolve({ success: true } as unknown as T);
-    }, 400); // Small delay to simulate network
+    }, 300); // Network delay
   });
 }
 
@@ -51,7 +131,7 @@ export const api = {
   },
 
   post: <T>(path: string, body?: unknown, init?: RequestInit) => {
-    if (isProd) return mockNetwork<T>(path, "POST");
+    if (isProd) return mockNetwork<T>(path, "POST", body);
     return fetch(`${API_BASE}${path}`, {
       ...init,
       method: "POST",
@@ -62,7 +142,7 @@ export const api = {
   },
 
   patch: <T>(path: string, body?: unknown, init?: RequestInit) => {
-    if (isProd) return mockNetwork<T>(path, "PATCH");
+    if (isProd) return mockNetwork<T>(path, "PATCH", body);
     return fetch(`${API_BASE}${path}`, {
       ...init,
       method: "PATCH",
