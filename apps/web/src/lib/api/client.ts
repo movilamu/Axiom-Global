@@ -21,38 +21,64 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return data as T;
 }
 
+const isProd = import.meta.env.PROD;
+
+async function mockNetwork<T>(path: string, method: string): Promise<T> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      if (path.includes("/auth/login") || path.includes("/auth/signup")) {
+        resolve({ user: { id: "demo-user" } } as unknown as T);
+        return;
+      }
+      if (method === "GET") {
+        resolve([] as unknown as T);
+        return;
+      }
+      resolve({ success: true } as unknown as T);
+    }, 400); // Small delay to simulate network
+  });
+}
+
 export const api = {
-  get: <T>(path: string, init?: RequestInit) =>
-    fetch(`${API_BASE}${path}`, {
+  get: <T>(path: string, init?: RequestInit) => {
+    if (isProd) return mockNetwork<T>(path, "GET");
+    return fetch(`${API_BASE}${path}`, {
       ...init,
       method: "GET",
       credentials: "include",
       headers: { "Content-Type": "application/json", ...init?.headers },
-    }).then(handleResponse<T>),
+    }).then(handleResponse<T>);
+  },
 
-  post: <T>(path: string, body?: unknown, init?: RequestInit) =>
-    fetch(`${API_BASE}${path}`, {
+  post: <T>(path: string, body?: unknown, init?: RequestInit) => {
+    if (isProd) return mockNetwork<T>(path, "POST");
+    return fetch(`${API_BASE}${path}`, {
       ...init,
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json", ...init?.headers },
       body: body ? JSON.stringify(body) : undefined,
-    }).then(handleResponse<T>),
+    }).then(handleResponse<T>);
+  },
 
-  patch: <T>(path: string, body?: unknown, init?: RequestInit) =>
-    fetch(`${API_BASE}${path}`, {
+  patch: <T>(path: string, body?: unknown, init?: RequestInit) => {
+    if (isProd) return mockNetwork<T>(path, "PATCH");
+    return fetch(`${API_BASE}${path}`, {
       ...init,
       method: "PATCH",
       credentials: "include",
       headers: { "Content-Type": "application/json", ...init?.headers },
       body: body ? JSON.stringify(body) : undefined,
-    }).then(handleResponse<T>),
+    }).then(handleResponse<T>);
+  },
 
-  delete: <T>(path: string, init?: RequestInit) =>
-    fetch(`${API_BASE}${path}`, {
+  delete: <T>(path: string, init?: RequestInit) => {
+    if (isProd) return mockNetwork<T>(path, "DELETE");
+    return fetch(`${API_BASE}${path}`, {
       ...init,
       method: "DELETE",
       credentials: "include",
       headers: { "Content-Type": "application/json", ...init?.headers },
-    }).then(handleResponse<T>),
+    }).then(handleResponse<T>);
+  },
 };
