@@ -1,0 +1,198 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  phone             String?   @unique
+  fullName          String
+  avatarUrl         String?
+  locale            String    @default("en-US")
+  currency          String    @default("USD")
+  kycStatus         KYCStatus @default(PENDING)
+  accountType       AccountType @default(PERSONAL)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  accounts          Account[]
+  transfers         Transfer[]
+  savingsGoals      SavingsGoal[]
+  cryptoHoldings    CryptoHolding[]
+  riskEvents        RiskEvent[]
+  businessProfile   BusinessProfile?
+  notificationPrefs NotificationPrefs?
+}
+
+model Account {
+  id            String   @id @default(cuid())
+  userId        String
+  accountNumber String   @unique @default(cuid())
+  type          String   @default("CURRENT")
+  balance       Decimal  @default(0) @db.Decimal(18, 2)
+  currency      String   @default("USD")
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id])
+  sentTransfers Transfer[] @relation("SentTransfers")
+  recvTransfers Transfer[] @relation("ReceivedTransfers")
+}
+
+model Transfer {
+  id                String         @id @default(cuid())
+  sessionRef        String
+  senderId          String
+  senderAccountId   String
+  recipientId       String?
+  recipientAccount  String
+  recipientName     String
+  amount            Decimal        @db.Decimal(18, 2)
+  currency          String
+  convertedAmount   Decimal?       @db.Decimal(18, 2)
+  convertedCurrency String?
+  status            TransferStatus @default(PENDING)
+  type              TransferType
+  scheduledAt       DateTime?
+  completedAt       DateTime?
+  note              String?
+  riskScore         Int?
+  riskTier          Int?
+  createdAt         DateTime       @default(now())
+  sender            User           @relation(fields: [senderId], references: [id])
+  senderAccount     Account        @relation("SentTransfers", fields: [senderAccountId], references: [id])
+}
+
+model SavingsGoal {
+  id            String   @id @default(cuid())
+  userId        String
+  name          String
+  targetAmount  Decimal  @db.Decimal(18, 2)
+  currentAmount Decimal  @default(0) @db.Decimal(18, 2)
+  currency      String
+  emoji         String?
+  autoSaveRule  Json?
+  deadline      DateTime?
+  isCompleted   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id])
+}
+
+model CryptoHolding {
+  id           String   @id @default(cuid())
+  userId       String
+  coinId       String
+  symbol       String
+  quantity     Decimal  @db.Decimal(28, 10)
+  avgBuyPrice  Decimal  @db.Decimal(18, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id])
+  transactions CryptoTransaction[]
+}
+
+model CryptoTransaction {
+  id          String   @id @default(cuid())
+  holdingId   String
+  type        String
+  quantity    Decimal  @db.Decimal(28, 10)
+  priceAtTime Decimal  @db.Decimal(18, 2)
+  total       Decimal  @db.Decimal(18, 2)
+  riskScore   Int?
+  createdAt   DateTime @default(now())
+  holding     CryptoHolding @relation(fields: [holdingId], references: [id])
+}
+
+model RiskEvent {
+  id          String   @id @default(cuid())
+  userId      String
+  sessionId   String
+  action      String
+  riskScore   Int
+  riskTier    Int
+  riskFactors Json
+  outcome     String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model BusinessProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  businessName   String
+  registrationNo String?
+  gstNumber      String?
+  category       String
+  monthlyLimit   Decimal  @db.Decimal(18, 2) @default(50000)
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id])
+  expenses       BusinessExpense[]
+  virtualCards   VirtualCard[]
+}
+
+model BusinessExpense {
+  id         String   @id @default(cuid())
+  profileId  String
+  merchant   String
+  category   String
+  amount     Decimal  @db.Decimal(18, 2)
+  currency   String
+  receiptUrl String?
+  note       String?
+  date       DateTime
+  createdAt  DateTime @default(now())
+  profile    BusinessProfile @relation(fields: [profileId], references: [id])
+}
+
+model VirtualCard {
+  id          String   @id @default(cuid())
+  profileId   String
+  last4       String
+  expiryMonth Int
+  expiryYear  Int
+  isActive    Boolean  @default(true)
+  spendLimit  Decimal? @db.Decimal(18, 2)
+  createdAt   DateTime @default(now())
+  profile     BusinessProfile @relation(fields: [profileId], references: [id])
+}
+
+model NotificationPrefs {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  emailTransfers Boolean @default(true)
+  smsHighRisk    Boolean @default(true)
+  pushAll        Boolean @default(true)
+  user           User    @relation(fields: [userId], references: [id])
+}
+
+enum KYCStatus {
+  PENDING
+  SUBMITTED
+  VERIFIED
+  REJECTED
+}
+
+enum AccountType {
+  PERSONAL
+  BUSINESS
+}
+
+enum TransferStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum TransferType {
+  P2P
+  BILL
+  SCHEDULED
+  INTERNATIONAL
+  CRYPTO
+}

@@ -1,0 +1,27 @@
+
+> web@1.0.0 build
+> tsc -b && vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 1279 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/registerSW.js                0.13 kB
+dist/manifest.webmanifest         0.15 kB
+dist/index.html                   0.91 kB │ gzip:   0.52 kB
+dist/assets/index-BOdkWxv9.css   22.23 kB │ gzip:   5.61 kB
+dist/assets/index-_Fv35QqT.js   895.39 kB │ gzip: 256.52 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 7.82s
+
+PWA v0.20.5
+mode      generateSW
+precache  6 entries (897.60 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-7a79b53c.js
