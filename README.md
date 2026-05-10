@@ -25,6 +25,7 @@ Unlike traditional fintech platforms that treat fraud detection as an API add‑
 ## 🏛 Architecture Overview
 
 The system follows a **monorepo** architecture to cleanly separate banking logic from the security engine.
+```
 axiom-global/
 ├── apps/
 │ ├── web/ # React Dashboard & PWA Shell
@@ -33,8 +34,8 @@ axiom-global/
 │ ├── silentsentinel/ # Core Biometric Engine (Shared Module)
 │ └── core/ # Shared TS Definitions & Utils
 └── COMPLIANCE.md # Multi‑jurisdictional Regulatory Mapping
+```
 
-text
 
 ## 🗺 Strategic Roadmap
 
